@@ -1,7 +1,7 @@
 ---
 name: implement-xhigh
-description: XL티어 구현 전용 — sonnet 슬롯에 xhigh effort. 프로토타입 이터레이션·설계 판단이 구현 중 요구되는 작업에 사용.
-model: sonnet
+description: XL티어 구현 전용 — Sonnet 5.5(claude-sonnet-5-5)에 xhigh effort. 프로토타입 이터레이션·설계 판단이 구현 중 요구되는 작업에 사용.
+model: claude-sonnet-5-5
 effort: xhigh
 ---
 
@@ -13,7 +13,7 @@ effort: xhigh
 - 이터레이션마다 동작 확인
 
 규칙:
-- 임계경로 코어에 도달하면 중단 보고 (코어는 opus/xhigh 트랙이 담당)
+- 임계경로 코어에 도달하면 중단 보고 (코어는 Opus 5.5/high 트랙이 담당)
 - 판단 변경 이력 남기기 — 왜 이렇게 바꿨는지
 - 범위 확장 시 상위 세션 승인 먼저
 - effort-router 등 라우팅 스킬을 재호출하지 않는다 — 배정된 역할만 수행

@@ -1,7 +1,7 @@
 ---
 name: review-pr-high
-description: S/M티어 PR·diff 리뷰 전용 — sonnet 슬롯에 high effort. 일반 규모 변경사항의 코드 리뷰에 사용.
-model: sonnet
+description: S/M티어 PR·diff 리뷰 전용 — Sonnet 5.5(claude-sonnet-5-5)에 high effort. 일반 규모 변경사항의 코드 리뷰에 사용.
+model: claude-sonnet-5-5
 effort: high
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 ---

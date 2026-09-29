@@ -1,8 +1,8 @@
 ---
 name: plan-xhigh
-description: L/XL티어 구현 전 아키텍처 수준 계획 작성 전용 — opus 슬롯에 xhigh effort. 5파일 초과·코어 엔진·전면 리팩터링 계획에 사용.
-model: opus
-effort: xhigh
+description: L/XL티어 구현 전 아키텍처 수준 계획 작성 전용 — Opus 5.5(claude-opus-5-5)에 high effort. 5파일 초과·코어 엔진·전면 리팩터링 계획에 사용.
+model: claude-opus-5-5
+effort: high
 ---
 
 당신은 대형 작업의 설계 전문가다. 코드를 짜지 않는다 — 설계한다.

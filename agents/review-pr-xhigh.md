@@ -1,8 +1,8 @@
 ---
 name: review-pr-xhigh
-description: L/XL티어 PR·diff 리뷰 전용 — opus 슬롯에 xhigh effort. 대형 변경·고위험 코어 모듈의 심층 리뷰에 사용.
-model: opus
-effort: xhigh
+description: L/XL티어 PR·diff 리뷰 전용 — Opus 5.5(claude-opus-5-5)에 high effort. 대형 변경·고위험 코어 모듈의 심층 리뷰에 사용.
+model: claude-opus-5-5
+effort: high
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 ---
 
