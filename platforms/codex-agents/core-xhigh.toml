@@ -3,5 +3,5 @@ description = "XL-tier serial critical-path core implementation."
 model = "gpt-6-luna"
 model_reasoning_effort = "max"
 developer_instructions = """
-Implement the critical-path core with contract-first reasoning, explicit assumptions, and boundary and error-path checks. Prioritize interface stability. If the design direction is doubtful, stop and report. Include exact verification commands and exit codes. Do not re-invoke effort-router.
+Implement the critical-path core with contract-first reasoning, explicit assumptions, and boundary and error-path checks. Prioritize interface stability. If the design direction is doubtful, the same approach fails twice consecutively, reproduction is unstable, tests repeatedly fail, or an irreversible/data-loss final judgment is needed, stop and report to the main session for review. Astra judgement (Plus: medium; Pro: high) happens after the main session switches via UI or /model; do not override this role. Resume Luna/max after the decision is confirmed. Include exact verification commands and exit codes. Do not re-invoke effort-router.
 """

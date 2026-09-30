@@ -27,7 +27,7 @@ Codex 또는 ChatGPT 데스크톱 앱에 이 Skill을 설치·업데이트해 �
 
 1. Skill을 `~/.codex/skills/effort-router/`에 설치
 2. custom-agent TOML을 `~/.codex/agents/`에 설치
-3. `~/.codex/config.toml`에 기본 `gpt-6-luna / max`와 custom-agent 활성 설정을 **병합**
+3. `~/.codex/config.toml`에 신규 설치 기본 `gpt-6.1-sol / medium`과 custom-agent 활성 설정을 **병합**
 4. `~/.codex/AGENTS.md`에 전역 발동·승격 규칙과 실패 원장 규칙을 **병합**
 5. Codex/ChatGPT 앱 재시작 후 설치 검증 실행
 
@@ -112,15 +112,17 @@ jev는 TypeSafe 판단형 LLM이다 — 1왕복 0.15~0.5초, 100% JSON. 프리�
 
 ### Codex 전역 라우팅 정책
 
-일반 작업은 `gpt-6-luna / max`, 계획과 고난도 추론은 `gpt-6-sol / xhigh`를 사용한다. Terra는 현재 라우팅에 사용하지 않는다. Codex용 custom-agent TOML은 이 매핑을 기록하며, 파일 존재는 호출 권한을 뜻하지 않는다. 이 환경에서는 native spawn/fan-out을 사용하지 않는다.
+신규 설치의 메인 기본값은 `gpt-6.1-sol / medium`이다. 이미 설정된 `gpt-6.1-sol`의 `low`, `medium`, `high`, `xhigh`, `max` 중 하나는 유효한 메인 프리셋이며, 메인 모델·에포트는 custom-agent TOML 정책과 별도로 유지한다.
 
 | 작업 성격 | 모델·에포트 | Codex role |
 |---|---|---|
 | 모든 일반 구현·조사·테스트·검증 | `gpt-6-luna / max` | `coder-medium`, `implement-med`, `implement-xhigh`, `core-xhigh` |
-| 계획·명세·아키텍처 | `gpt-6-sol / xhigh` | `plan-high`, `plan-xhigh` |
-| 계획 검토·리뷰·고난도 추론·보안 판정 | `gpt-6-sol / xhigh` | `plan-adversary-xhigh`, `review-pr-*`, `security-audit` |
+| 일반 명세·M티어 계획 | `gpt-6.1-sol / medium` | `plan-high` |
+| 복잡한 L/XL 계획·아키텍처 설계 | `gpt-6.1-sol / xhigh` | `plan-xhigh` |
+| 계획 적대검토·모든 PR 리뷰 | `gpt-6.1-sol / xhigh` | `plan-adversary-xhigh`, `review-pr-*` |
+| 보안 감사·예외적 고위험 최종 판단 | Plus: `gpt-6-astra / medium`; Pro: `gpt-6-astra / high` | `security-audit`; 예외 판단은 메인 세션 UI 전환 |
 
-`python3 <skill-dir>/scripts/configure_codex_plan.py --apply`는 요금제를 조회하지 않고 고정 전역 매핑을 적용한다. 변경 뒤 Codex를 재시작하고 `verify_global_install.py`를 실행한다.
+Codex 작업 시작 및 계정 변경 후 `python3 <skill-dir>/scripts/configure_codex_plan.py`로 로그인 요금제를 확인한다. `changed_roles`가 있으면 `--apply`로 적용하고 `restart_required: true`이면 Codex를 재시작한다. 감지 실패·미지원 요금제는 high로 추정하지 않고 중단하며, 필요하면 `--plan plus|pro`를 명시한다. 검증은 `verify_global_install.py`로 실행한다.
 
 ### Claude Code 전역 라우팅 정책 (모델 매핑 기준일 2026-09-29)
 
@@ -149,32 +151,32 @@ Claude Code 역할 파일(`agents/*.md`)은 슬롯 별칭(`sonnet`·`opus`·`hai
 - ① 계획: 생략
 - ② 검토: 셀프 재실행 확인(§3)
 - ③ 구현: 메인 세션 직접 또는 `coder-medium` (`gpt-6-luna / max`)
-- ④ 리뷰: `review-pr-high` (`gpt-6-sol / xhigh`, 텍스트·스타일만 변경 시 생략)
+- ④ 리뷰: `review-pr-high` (`gpt-6.1-sol / xhigh`, 텍스트·스타일만 변경 시 생략)
 
 ### M
-- ① 계획: `plan-high` (`gpt-6-sol / xhigh`)
-- ② 검토: `plan-adversary-xhigh` (`gpt-6-sol / xhigh`)
+- ① 계획: `plan-high` (`gpt-6.1-sol / medium`)
+- ② 검토: 생략 (자기 산출물 검토는 검토가 아니다)
 - ③ 구현: `implement-med` (`gpt-6-luna / max`)
-- ④ 리뷰: `review-pr-high` (`gpt-6-sol / xhigh`)
+- ④ 리뷰: `review-pr-high` (`gpt-6.1-sol / xhigh`)
 
 ### L
-- ① 계획: `plan-high` (`gpt-6-sol / xhigh`, Phase 분해)
-- ② 검토: `plan-adversary-xhigh` (`gpt-6-sol / xhigh`)
+- ① 계획: `plan-xhigh` (`gpt-6.1-sol / xhigh`, Phase 분해)
+- ② 검토: `plan-adversary-xhigh` (`gpt-6.1-sol / xhigh`)
 - ③ 구현: `implement-med` (`gpt-6-luna / max`, Phase당 ≤5파일)
-- ④ 리뷰: `review-pr-xhigh` (`gpt-6-sol / xhigh`)
+- ④ 리뷰: `review-pr-xhigh` (`gpt-6.1-sol / xhigh`)
 
 ### XL
-- ① 계획: `plan-xhigh` (`gpt-6-sol / xhigh`)
-- ② 검토: `plan-adversary-xhigh` (`gpt-6-sol / xhigh`)
+- ① 계획: `plan-xhigh` (`gpt-6.1-sol / xhigh`)
+- ② 검토: `plan-adversary-xhigh` (`gpt-6.1-sol / xhigh`)
 - ③ 구현: `implement-xhigh` 또는 `core-xhigh` (`gpt-6-luna / max`)
-- ④ 리뷰: `review-pr-xhigh` (`gpt-6-sol / xhigh`)
+- ④ 리뷰: `review-pr-xhigh` (`gpt-6.1-sol / xhigh`)
 
 ### 보안감사
-- `security-audit` (`gpt-6-sol / xhigh`)와 교차 검증 1건 이상을 적용한다. CRITICAL은 즉시 최상단에 보고한다.
+- `security-audit` (Plus: Astra/medium, Pro: Astra/high)와 교차 검증 1건 이상을 적용한다. CRITICAL은 즉시 최상단에 보고한다.
 
 ## ●●● 팬아웃
 
-Codex 전역 지침은 native spawn/fan-out을 금지한다. 아래 팬아웃 절차는 이를 허용하는 다른 하니스에서만 적용한다. Codex 보조 작업이 명시적으로 허용된 경우 별도 `codex exec` 프로세스와 고정 모델·에포트를 사용한다.
+Codex는 §2 화이트리스트의 custom agent만 호출한다. 높은 effort만으로 멀티에이전트를 자동 사용하지 않으며, 아래 팬아웃은 독립 작업과 실제 병렬 이득이 있을 때만 적용한다.
 
 
 `plan-adversary-xhigh`를 병렬 스폰, 프롬프트마다 렌즈 1개:
@@ -229,9 +231,25 @@ Codex 전역 지침은 native spawn/fan-out을 금지한다. 아래 팬아웃 �
 - **스폰 워치독** — 메인 세션은 스폰을 방치하지 않는다. 비동기·장기 스폰은 10분 간격으로 점검한다(하니스의 상태 조회·출력 확인 수단). 무진행 = 무응답 또는 하니스 진행 신호의 연속 2회 부재 → 정지 후 재스폰·역할 재분배를 판정한다. 재스폰은 동일 역할 2회까지 — 초과 시 역할 재분배 또는 ① 회귀로 경로를 바꿔 자율 진행한다(사용자 정지·승인 요구 없음). 정지 수단이 없는 하니스는 스폰 프롬프트에 종료 시한을 사전 명시한다. 재스폰 프롬프트에는 직전 스폰의 진단(부분 출력·정지 지점)을 데이터로 주입한다(존재할 때 한정, §5 주입 방어 준용) — 진단 없는 재스폰은 같은 지점에서 다시 막힌다.
 - **대기 시 행동**(M+·비긴급) — 머지·게이트·리뷰·스폰 완료 대기 중 멈춘 채 보고만 기다리지 않는다: 독립 과업(경량 작업 우선)으로 전환, 전환 불가 시 리컨·다음 과업 계획 수립으로 대기를 쓴다(①계획 스폰 대기는 리컨 병렬화). 전환은 대기 예상 시간이 전환 비용보다 길 때다(짧은 대기마다 컨텍스트 전환을 강제하지 않는다). 이미 통과한 게이트·검증의 재실행은 전환 행동에서 제외한다. 어느 대기종이든 한 스폰의 장기화가 독립 후속 스폰을 정지시키지 않는다(병렬 유지는 백엔드 동시성 상한이 우선). 근거: 대기 중 다음 과업 정지·게이트 3회 중복 실행 실측.
 - **계약은 인계·상태·증지만 규정** — 서브에이전트 내부 실행(도구 사용·구현 경로·디버깅 전략)은 규정하지 않는다.
-- **미해결 검토** — 동일 접근 2회 연속 실패, 재현 불안정, 또는 테스트가 반복 실패하면 실행을 중단하고 `gpt-6-sol / xhigh`로 원인 분석과 해결안을 검토한다. 재계획과 고난도 판단은 `gpt-6-sol / xhigh`, 확정된 일반 구현은 `gpt-6-luna / max`로 진행한다.
+- **Astra 승격** — 데이터 손실·불가역 변경의 최종 판단, 동일 접근 2회 연속 실패, 재현 불안정, 또는 반복 테스트 실패 시 메인 세션은 진행을 멈추고 UI 또는 `/model`에서 Astra로 전환해 판단한다(Plus: medium, Pro: high). role 모델을 override하지 않는다. 해결 방향이 확정되면 계획은 Sol/medium 또는 Sol/xhigh의 해당 티어 role로 갱신하고, 수정·테스트 실행은 Luna/max로 재개한다.
 - **메인 세션 model·effort는 UI 또는 `/model`로만 변경**한다. 에이전트는 변경했다고 주장하지 않고 필요한 전환을 안내한다.
 - 스킬 갱신 시 원본과 설치본(`~/.codex/skills/effort-router/`, `~/.codex/agents/*.toml`)의 매핑을 비교하고 검증한다. Claude Code 배포 시에는 기존 사본 2곳도 별도로 동기화한다.
+
+### 선택적 검증 핀
+
+유효한 Git 기준 커밋이 있는 M티어 이상 코드 변경에서는 SHA 고정과 검증 입력 변경 여부를 보조 확인하기 위해 `scripts/verify_pin.py`를 사용한다. 이 검사는 핵심 테스트 명령과 그 결과 보고를 대체하지 않는다. 예시:
+
+```bash
+python3.12 ~/.codex/skills/effort-router/scripts/verify_pin.py \
+  --base <착수-전-커밋-SHA> \
+  --expect-sha <직전-검증에서-기록한-HEAD-SHA> \
+  --verify-cmd 'python3 -m pytest -q' \
+  --save <과업별-증거-디렉터리>
+```
+
+`--verify-cmd`를 생략하면 저장소 상태만 검사하며 테스트는 실행되지 않는다. `--base`를 생략하면 검증 입력 변경 상태는 `not_evaluated`다. exit 0은 관측된 플래그가 없다는 뜻일 뿐 테스트 실행·요구 충족을 증명하지 않는다. exit 1은 SHA 불일치, 검증 입력 변경·은닉, 명령 실패 또는 실행 중 작업 트리 변경 같은 attention 플래그다 — 해당 플래그를 검토·해소하기 전에는 done으로 판정하지 않는다. exit 2는 설정·환경·Git·프로세스 정리·증거 저장 오류이며 검증 명령의 성공이나 실패를 뜻하지 않는다. 기본 Git 검사는 읽기 전용이고 helper는 프로젝트 hook을 자동 실행하지 않는다. 직접 지정한 검증 명령은 작업 트리를 변경할 수 있다.
+
+`--save` 영수증은 실행마다 고유 하위 디렉터리에 저장되고 이전 증거를 지우지 않는다. `--fresh-checkout`은 안전한 worktree 소유 계약이 없어 거부된다. 문서·설정 과제는 기존 §3 대체 확인 수단(diff·스키마·외부 원천 대조)을 사용한다.
 
 ## 4. 리뷰 판정과 merge 권한
 

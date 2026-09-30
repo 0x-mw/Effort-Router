@@ -1,6 +1,6 @@
 # effort-router
 
-작업의 규모·위험도를 티어(S/M/L/XL)로 판정하고 단계별 모델·에포트를 배정하는 Codex·ChatGPT Skill. 일반 작업은 GPT-6-Luna max, 계획·고난도 추론은 GPT-6-Sol xhigh를 사용한다.
+작업의 규모·위험도를 티어(S/M/L/XL)로 판정하고 단계별 모델·에포트를 배정하는 Codex·ChatGPT Skill. 일반 계획은 GPT-6.1-Sol medium, 복잡한 계획과 검토는 Sol xhigh, 보안 감사와 예외적 고위험 판단은 요금제에 따른 Astra, 실무 실행은 Luna max로 보낸다.
 
 ```text
 Decision(티어 판정) → Requirement → Acceptance → Task → Evidence → Learning
@@ -20,7 +20,7 @@ Decision(티어 판정) → Requirement → Acceptance → Task → Evidence →
 | `AGENTS.md` | 저장소 작업의 모델·에포트 정책과 역할 템플릿 오류 예방 규칙 |
 | `agents/` | Claude Code 역할 정의 10종 + ChatGPT 데스크톱 UI 메타데이터 `openai.yaml` |
 | `platforms/` | Codex·ChatGPT 실행 어댑터와 기타 하니스 파생 문서 |
-| `scripts/` | 전역 Codex 역할 라우팅·설치 검증 스크립트 + jev 판단 계층 CLI(jev_judge.py·jev_modes.py — CLI 12종: tier·prune·escalation·memory-gate·stall·done·dup·loop·verify-run·watch·route·guard) |
+| `scripts/` | 설치 검증·Codex 요금제 라우팅·jev 판단 계층 CLI, 선택적 검증 핀(`verify_pin.py`·`verify_exec.py`) 및 회귀 테스트 |
 | `TESTS.md` | 검증 프로토콜·측정 결과·라운드별 개정 이력·재현 절차 |
 
 ## 설치 (Codex + ChatGPT 데스크톱 앱)
@@ -41,8 +41,8 @@ python3 scripts/configure_codex_plan.py --apply
 기존 파일을 통째로 교체하지 말고 다음 값을 병합한다. `model`과 `model_reasoning_effort`는 첫 TOML table보다 위의 root 영역에 둔다.
 
 ```toml
-model = "gpt-6-luna"
-model_reasoning_effort = "max"
+model = "gpt-6.1-sol"
+model_reasoning_effort = "medium"
 
 [agents]
 enabled = true
@@ -50,15 +50,12 @@ enabled = true
 
 이미 `[agents]`가 있으면 table을 다시 만들지 말고 `enabled = true`만 추가·수정한다. 기존 설치가 `[features]`의 `multi_agent = true`를 쓰며 정상 작동한다면 그대로 유지해도 된다.
 
-`agents.enabled`는 custom role 설정을 활성화할 뿐 native spawn/fan-out을 허용하지 않는다. 이 정책에서 독립 보조 작업은 별도 `codex exec` 프로세스에 모델과 effort를 명시해 실행한다.
-
 ### 3. `~/.codex/AGENTS.md` 전역 발동 규칙
 
 기존 내용을 보존하고 다음 단편을 추가한다.
 
 ```markdown
-코딩 작업 착수 전 설치된 `effort-router`를 사용한다. 일반 작업은 GPT-6-Luna max, 계획·고난도 추론은 GPT-6-Sol xhigh를 사용한다. Terra는 사용하지 않는다. native spawn/fan-out은 사용하지 않는다.
-`configure_codex_plan.py --apply`는 고정 전역 role 매핑만 적용하고, 변경 후 Codex를 재시작한다. 동일 접근 2회 실패 시 GPT-6-Sol xhigh로 검토하고 확정된 구현은 GPT-6-Luna max로 진행한다.
+코딩 작업 착수 전 설치된 `effort-router`를 사용한다. Output Contract로 티어·단계·모델·effort를 먼저 밝힌다. 일반 계획은 GPT-6.1-Sol medium, L/XL 계획과 계획 적대검토·모든 PR 리뷰는 Sol xhigh, 보안 감사와 예외적 고위험 판단은 Plus에서 Astra medium·Pro에서 Astra high, 실무 실행은 Luna max를 사용한다. 데이터 손실·불가역 변경의 최종 판단 또는 동일 접근 2회 실패·불안정 재현·반복 테스트 실패 시 메인 세션을 UI 또는 `/model`에서 요금제별 Astra로 전환한다. role 모델을 override하지 않는다. 해결안이 확정되면 계획은 해당 티어의 Sol role로, 실행은 Luna max로 재개한다. 역할 호출 전 configure_codex_plan.py로 요금제를 확인하고 불일치 시 --apply 적용 및 Codex 재시작 후 진행한다. 높은 effort만으로 멀티에이전트를 자동 사용하지 않는다.
 
 ## 실패 기반 영구 예방 규칙
 
@@ -79,7 +76,7 @@ ChatGPT 데스크톱 앱의 Codex 화면은 같은 로컬 Skill과 `~/.codex` �
 python3 ~/.codex/skills/effort-router/scripts/verify_global_install.py
 ```
 
-`PASS global effort-router installation`이 나와야 로컬 Skill, 전역 모델·effort, subagent 활성화, 전역 발동 규칙, 10개 custom agent가 모두 설치된 상태다. 상세 병합법은 `platforms/codex.md` 참조.
+`PASS global effort-router installation`이 나와야 로컬 Skill, 전역 모델·effort, subagent 활성화, 전역 발동 규칙, UI metadata, 10개 custom agent가 모두 설치된 상태다. 신규 설치 기본값은 `gpt-6.1-sol / medium`이다. 이미 설정된 `gpt-6.1-sol`의 low·medium·high·xhigh·max effort도 허용하며, role TOML 정책과 별개로 보존한다. 상세 병합법은 `platforms/codex.md` 참조.
 
 ### (선택) jev 판단 계층
 
@@ -112,15 +109,31 @@ export TYPESAFE_API_KEY='<본인 키>'
 
 ## 모델 매핑
 
-일반 작업은 `gpt-6-luna / max`, 계획·고난도 추론은 `gpt-6-sol / xhigh`다. Terra는 사용하지 않는다. 이 설치에서는 native spawn/fan-out을 사용하지 않는다.
+일반 계획은 `gpt-6.1-sol / medium`, 복잡한 L/XL 계획과 계획 적대검토·모든 PR 리뷰는 `gpt-6.1-sol / xhigh`, 보안 감사와 예외적 고위험 판단은 Plus에서 `gpt-6-astra / medium`·Pro에서 `gpt-6-astra / high`, 실무 실행은 `gpt-6-luna / max`다. 높은 effort만으로 subagent를 늘리지 않으며, 팬아웃은 독립 작업과 실제 병렬 이득이 있을 때만 한다.
 
 | 작업 | 모델·effort |
 |---|---|
-| 구현·조사·테스트·검증 | `gpt-6-luna / max` |
-| 계획·명세·아키텍처 | `gpt-6-sol / xhigh` |
-| 계획 검토·리뷰·보안 판정 | `gpt-6-sol / xhigh` |
+| 구현·수정·테스트·검증 | `gpt-6-luna / max` |
+| 일반 명세·M티어 계획 | `gpt-6.1-sol / medium` |
+| 복잡한 L/XL 계획·아키텍처 | `gpt-6.1-sol / xhigh` |
+| 계획 적대검토·모든 PR 리뷰 | `gpt-6.1-sol / xhigh` |
+| 보안 감사·예외적 고위험 판단 | Plus: `gpt-6-astra / medium`; Pro: `gpt-6-astra / high` |
 
-`python3 scripts/configure_codex_plan.py --apply`는 고정 role 매핑을 백업과 함께 적용한다. 상세 설정과 검증은 [Codex adapter](platforms/codex.md)를 따른다.
+`python3 scripts/configure_codex_plan.py`는 로그인 요금제를 확인하고, `--apply`는 필요한 role 변경을 백업과 함께 적용한다. 감지에 실패하면 `--plan plus|pro`로 명시한다. 상세 설정과 검증은 [Codex adapter](platforms/codex.md)를 따른다.
+
+## 선택적 검증 핀
+
+유효한 Git 기준 커밋이 있는 M티어 이상 코드 변경에서 SHA와 검증 입력 변경을 보조 확인한다. 핵심 테스트 명령과 결과 보고를 대체하지 않는다.
+
+```bash
+python3.12 ~/.codex/skills/effort-router/scripts/verify_pin.py \
+  --base <착수-전-커밋-SHA> \
+  --expect-sha <직전-검증에서-기록한-HEAD-SHA> \
+  --verify-cmd 'python3 -m pytest -q' \
+  --save <과업별-증거-디렉터리>
+```
+
+`--verify-cmd`를 생략하면 상태만 검사하고 테스트는 실행하지 않는다. `--base`가 없으면 검증 입력 변경은 `not_evaluated`다. exit 0은 관측된 플래그가 없음을 뜻하며 테스트 통과나 요구 충족을 증명하지 않는다. exit 1은 검토가 필요한 SHA·검증 입력·명령·작업 트리 플래그, exit 2는 설정·환경·Git·프로세스 정리·증거 저장 오류다. helper는 project hook을 실행하지 않지만 지정한 검증 명령은 작업 트리를 바꿀 수 있다. 영수증은 실행별 고유 폴더에 저장되어 앞선 증거를 보존한다. 자세한 계약은 [SKILL.md의 선택적 검증 핀](SKILL.md#선택적-검증-핀)을 따른다.
 
 ## 다른 하니스에서 쓰기
 

@@ -549,3 +549,14 @@ revfactory/codex-harness 비교에서 차용 기준 O(1)·일회성 비용 통�
 | I4 — README 핵심 원칙 무효화 전파 불릿(트리거 조건형·§5 위임) | README.md 핵심 원칙 | I1 파생 |
 
 검증 기록: ④리뷰(review-pr-xhigh 1스폰) **승인** — claims 5/5 verified: claim 1·2·3·5 본문 실측(verbatim diff exit 0·`git diff HEAD | grep -c '^-[^-]'` = 0·기존 계약 의미 대조 8쌍 모순 0), claim 4 미러 8/8 diff 0(cp 후 diff -q 전건 통과). claims 밖 LOW 2 비차단: 생성-검증 행 '연속' 수식어 탈락(어휘표 기록 전용 — 규범 본문 불변), 커밋 위생(4파일 개별 add — 선행 untracked AGENTS.md·__pycache__ 제외). round 1/0(②반려 1회 — v1 HIGH 5 → v2 → 재② 조건 접기 v3 확정), spawns 11, phase done
+
+## r18 GPT-6.1-Sol 라우팅·선택적 검증 핀 이식 (2026-09-30)
+
+Codex 정책을 설치본과 맞췄다: 일반 계획 Sol/medium, L·XL 계획과 계획 적대검토·PR 리뷰 Sol/xhigh, 고위험 Astra(Plus medium·Pro high), 구현 Luna/max. 계획 생성기는 Plus·Pro를 감지해 보안감사 role만 해당 effort로 바꾸며, 설치 검증기는 현재 main의 유효 effort와 역할 10개를 확인한다. 독립 작업과 실제 병렬 이득이 있을 때만 whitelist custom agent를 쓴다. 선택적 verify_pin/verify_exec와 회귀 테스트를 추가했다.
+
+검증 명령과 결과(격리된 저장소 체크아웃에서 실행):
+
+- `PYTHONDONTWRITEBYTECODE=1 python3.12 -m unittest scripts.test_verify_pin scripts.test_verify_exec` → exit 0, 45 tests.
+- `PYTHONDONTWRITEBYTECODE=1 python3.12 scripts/test_plan_routing.py` → exit 0, 4 tests.
+- `PYTHONDONTWRITEBYTECODE=1 python3.12 scripts/test_codex_routing.py` → exit 0, 2 tests.
+- `git diff --check` → exit 0.
