@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """r23 검증 핀 게이트 단위테스트 — 임시 git 저장소 fixture로 분기 전수(T1~T23).
 
-테스트는 subprocess로 CLI를 실행한다(test_jev_judge 관습) — import 방식이면
+테스트는 subprocess로 CLI를 실행한다(CLI 서브프로세스 관습) — import 방식이면
 수집 단계 ImportError로 RED가 성립하지 않는다. RED 단계(verify_pin.py 부재·신규
 분기 미구현)에서는 해당 테스트가 실패한다.
 claims 대응: T1~T15 = 번들 §4 C1~C15, T16 = R3 fnmatch 경계, T17 = C21(비ASCII

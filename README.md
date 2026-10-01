@@ -20,7 +20,7 @@ Decision(티어 판정) → Requirement → Acceptance → Task → Evidence →
 | `AGENTS.md` | 저장소 작업의 모델·에포트 정책과 역할 템플릿 오류 예방 규칙 |
 | `agents/` | Claude Code 역할 정의 10종 + ChatGPT 데스크톱 UI 메타데이터 `openai.yaml` |
 | `platforms/` | Codex·ChatGPT 실행 어댑터와 기타 하니스 파생 문서 |
-| `scripts/` | 설치 검증·Codex 요금제 라우팅·jev 판단 계층 CLI, 선택적 검증 핀(`verify_pin.py`·`verify_exec.py`) 및 회귀 테스트 |
+| `scripts/` | 설치 검증·Codex 요금제 라우팅, 선택적 검증 핀(`verify_pin.py`·`verify_exec.py`) 및 회귀 테스트 |
 | `TESTS.md` | 검증 프로토콜·측정 결과·라운드별 개정 이력·재현 절차 |
 
 ## 설치 (Codex + ChatGPT 데스크톱 앱)
@@ -77,35 +77,6 @@ python3 ~/.codex/skills/effort-router/scripts/verify_global_install.py
 ```
 
 `PASS global effort-router installation`이 나와야 로컬 Skill, 전역 모델·effort, subagent 활성화, 전역 발동 규칙, UI metadata, 10개 custom agent가 모두 설치된 상태다. 신규 설치 기본값은 `gpt-6.1-sol / medium`이다. 이미 설정된 `gpt-6.1-sol`의 low·medium·high·xhigh·max effort도 허용하며, role TOML 정책과 별개로 보존한다. 상세 병합법은 `platforms/codex.md` 참조.
-
-### (선택) jev 판단 계층
-
-`scripts/jev_judge.py`는 비싼 추론 스폰 전 예판을 돕는 선택 계층이다. `TYPESAFE_API_KEY` 환경변수만 읽으며, 셸 프로파일(예: `~/.bashrc`)에 아래 한 줄을 둔다.
-
-```bash
-export TYPESAFE_API_KEY='<본인 키>'
-```
-
-미설정 시 스킬은 기존 프로세스로 동작한다 — jev는 선택 계층이며, 키 부재 시 jev_judge.py는 exit 1 폴백 신호를 낸다. 사용 규칙(데이터 유출 면·감사 저장·권한 계약)은 SKILL.md의 '판단 계층(jev)' 절을 따른다.
-
-`unset TYPESAFE_API_KEY`가 즉시 비활성 스위치다(호출 전 폴백). 키 로테이션 시 셸 프로파일의 모든 export 지점을 함께 갱신한다. 판단 모드는 **CLI 12종** — tier·prune·escalation·memory-gate·stall 기본 5종 + 채택 판정 7종(done·dup·loop·verify-run·watch·route·guard).
-
-**판단 역할 (실험 1200호출로 캘리브레이션됨)** — 판정 1호출 비용(~0.3초·~1.2k 토큰)은 승인·차단하는 행동(심층 스폰·오배치) 비용의 극소수 %:
-
-| 가능 (채택) | 근거 |
-|------------|------|
-| CLI 기본 5종 — tier·prune·escalation·stall·memory-gate | 각 실험 통과 (SKILL.md jev 절) |
-| CLI 채택 7종 — done(done 조건 충족)·dup(todo 중복/우산)·loop(도구 루프)·verify-run(검증 이행)·watch(PR 코멘트 watch급)·route(스폰 역할 배치)·guard(프롬프트 가드) | 실험 채택 → 모드화 이식(템플릿 바이트 일치·스모크 7/7 판정 일치) |
-
-| 불가 (확정) | 이유 |
-|-------------|------|
-| 4지+ 다중 선택 | 단일 답 수렴 — 예/아니오 연쇄로 쪼개야 함 (연쇄로 역할 배치는 성공) |
-| 간접 관련성 회수 | 직접 연결만 판별 — 넓히면 무관까지 회수 |
-| 인용문 내 지시 구분 | 마킹 무력 — "주입 데이터 —" 라벨 뒤 구획 분리로만 해결 |
-| 권위 오염 필터 | conf 유지한 채 판단 이동 — 서술 위생(state 위생)이 1차 방어 |
-| noul 수치 보간 | 방향 신호 — 임계 통과/실패만, 0.4~0.6은 판단 보류 |
-
-설계 원칙: 질문 쪼개기 · 판별 소재 질문 내장 · 사실 필드(이력·신호)로 주기 · 예외 조건 미리 적기. 상세 원리·한계 표는 SKILL.md '판단 계층(jev)' 절 참조.
 
 ## 모델 매핑
 
