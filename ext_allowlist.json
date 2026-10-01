@@ -1,0 +1,28 @@
+{
+  "_설명": "외부 보조 모델 전송 허용 목록. path_roots 가 비어 있으면 해당 작업은 아무것도 통과하지 못한다. 폴더를 추가하는 것은 사용자의 명시적 결정이다. 공개 RFP 본문만 담긴 폴더만 등록할 것.",
+  "tasks": {
+    "rfp_public_summary": {
+      "desc": "공개된 RFP·공고 본문의 요약, 요구사항 목록화",
+      "targets": ["codex", "gemini"],
+      "path_roots": [],
+      "extensions": [".md", ".txt"]
+    },
+    "generic_code_review": {
+      "desc": "비밀·고객 데이터가 없는 일반 코드의 검토",
+      "targets": ["codex", "gemini"],
+      "path_roots": [],
+      "extensions": [".java", ".js", ".jsp", ".xml", ".py", ".md"]
+    },
+    "draft_phrasing": {
+      "desc": "서식·문구 초안 다듬기(금액·인명·계약 정보 없는 텍스트)",
+      "targets": ["codex", "gemini"],
+      "path_roots": [],
+      "extensions": [".md", ".txt"]
+    }
+  },
+  "deny_path_patterns": [
+    "경력", "주민", "인사", "급여", "견적", "산출내역", "계약", "발주", "증명서",
+    "\\.env", "secret", "credential", "password", "token", "\\.pem$", "\\.key$", "id_rsa"
+  ],
+  "max_bytes": 200000
+}

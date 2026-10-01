@@ -20,7 +20,7 @@ Decision(티어 판정) → Requirement → Acceptance → Task → Evidence →
 | `AGENTS.md` | 저장소 작업의 모델·에포트 정책과 역할 템플릿 오류 예방 규칙 |
 | `agents/` | Claude Code 역할 정의 10종 + ChatGPT 데스크톱 UI 메타데이터 `openai.yaml` |
 | `platforms/` | Codex·ChatGPT 실행 어댑터와 기타 하니스 파생 문서 |
-| `scripts/` | 설치 검증·Codex 요금제 라우팅, 선택적 검증 핀(`verify_pin.py`·`verify_exec.py`) 및 회귀 테스트 |
+| `scripts/` | 설치 검증·Codex 요금제 라우팅, 선택적 검증 핀(`verify_pin.py`·`verify_exec.py`), 외부 모델 전송 게이트(`ext_dispatch.py`, 허용 목록 `ext_allowlist.json`) 및 회귀 테스트 |
 | `TESTS.md` | 검증 프로토콜·측정 결과·라운드별 개정 이력·재현 절차 |
 
 ## 설치 (Codex + ChatGPT 데스크톱 앱)
