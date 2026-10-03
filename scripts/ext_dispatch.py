@@ -7,8 +7,11 @@
 기본은 판정만 한다(전송 안 함). 통과하면 exit 0, 차단이면 exit 2, 내부 오류도 차단(exit 1).
 --run 은 target=codex 이고 codex 가 설치돼 있을 때만 stdin 으로 파일 내용을 넘긴다(미검증 경로).
 
-차단 원칙: 허용 목록(ext_allowlist.json)에 작업유형·폴더·확장자가 모두 맞아야 통과한다.
-폴더 목록이 비어 있으면 아무것도 통과하지 못한다. 내용 검사(PII·키 패턴)는 보조 수단이다.
+차단 원칙: 정책 파일(ext_allowlist.json, 저장소 포함)의 작업유형·확장자와
+로컬 파일(ext_allowlist.local.json, 저장소 제외)의 허용 폴더가 모두 맞아야 통과한다.
+허용 폴더는 로컬 파일에서만 읽는다 — 정책 파일의 path_roots 는 무시한다(공개 저장소에 폴더명이 남지 않게).
+로컬 파일이 없거나 폴더 목록이 비어 있으면 아무것도 통과하지 못하고, 로컬 파일이 깨졌으면 기본 차단한다.
+내용 검사(PII·키 패턴)는 보조 수단이다.
 로그에는 전송 내용을 남기지 않는다(시각·작업·대상·경로·판정·사유).
 """
 import argparse
@@ -23,6 +26,7 @@ from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ALLOWLIST = Path(os.environ.get("EXT_ALLOWLIST") or SKILL_DIR / "ext_allowlist.json")
+LOCAL_ALLOWLIST = Path(os.environ.get("EXT_ALLOWLIST_LOCAL") or SKILL_DIR / "ext_allowlist.local.json")
 LOG = Path(os.environ.get("EXT_DISPATCH_LOG")
            or Path.home() / ".claude-mw/logs/ext_dispatch.jsonl")
 TARGETS = {"codex", "gemini"}
@@ -62,7 +66,28 @@ def load_policy():
         raise Deny(f"허용 목록을 읽지 못함({type(e).__name__}) — 기본 차단")
     if not isinstance(tasks, dict):
         raise Deny("허용 목록 형식 오류 — 기본 차단")
+    # 폴더는 로컬 파일에서만 읽는다. 정책 파일에 남아 있어도 쓰지 않는다.
+    if "path_roots" in policy or any(isinstance(r, dict) and "path_roots" in r for r in tasks.values()):
+        print("경고: 정책 파일의 path_roots 는 무시됨 — ext_allowlist.local.json 을 사용", file=sys.stderr)
     return tasks, deny_paths, max_bytes
+
+
+def load_local_roots(task):
+    """로컬 파일(저장소 제외)에서 작업별 허용 폴더를 읽는다. 파일이 없으면 빈 목록."""
+    if not LOCAL_ALLOWLIST.exists():
+        return []
+    try:
+        local = json.loads(LOCAL_ALLOWLIST.read_text(encoding="utf-8"))
+        roots = local["path_roots"]
+    except (OSError, ValueError, KeyError, TypeError):
+        raise Deny("로컬 허용 목록을 읽지 못함 — 기본 차단")
+    if not isinstance(roots, dict):
+        raise Deny("로컬 허용 목록을 읽지 못함 — 기본 차단")
+    value = roots.get(task, [])
+    # 빈 문자열은 현재 폴더로 풀려 의도치 않게 열리므로 형식 오류로 본다.
+    if not isinstance(value, list) or not all(isinstance(r, str) and r.strip() for r in value):
+        raise Deny("로컬 허용 목록을 읽지 못함 — 기본 차단")
+    return value
 
 
 def check(task, file_arg, target):
@@ -83,9 +108,9 @@ def check(task, file_arg, target):
     if not path.is_file():
         raise Deny("일반 파일이 아님 또는 존재하지 않음")
 
-    roots = [Path(r).expanduser().resolve() for r in rule.get("path_roots", [])]
+    roots = [Path(r).expanduser().resolve() for r in load_local_roots(task)]
     if not roots:
-        raise Deny("허용 폴더가 등록되지 않음 — ext_allowlist.json 에 폴더를 직접 추가해야 열림")
+        raise Deny("허용 폴더가 등록되지 않음 — ext_allowlist.local.json 에 폴더를 직접 추가해야 열림")
     if not any(path == r or r in path.parents for r in roots):
         raise Deny("허용 폴더 밖의 파일")
 

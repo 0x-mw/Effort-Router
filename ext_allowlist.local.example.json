@@ -1,0 +1,8 @@
+{
+  "_설명": "이 파일을 ext_allowlist.local.json 으로 복사해 폴더를 직접 채운다. local 파일은 .gitignore 대상이며 커밋하지 않는다. 공개된 RFP 본문만 담긴 폴더만 등록할 것.",
+  "path_roots": {
+    "rfp_public_summary": [],
+    "generic_code_review": [],
+    "draft_phrasing": []
+  }
+}
