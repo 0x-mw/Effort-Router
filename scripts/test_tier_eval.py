@@ -101,5 +101,49 @@ print(json.dumps({{"type": "result", "result": "```text\\n- 판정 티어: D3\\n
           p.returncode == 1 and [x["ok"] for x in s] == [True, False]
           and s[1]["reason"].startswith("UNSAFE_TOOL"), p.stdout + p.stderr)
 
+    # --repeat: 일관성(같은 사례 N회) — 모두 통과해야 통과, 판정이 갈리면 흔들림 표시
+    out2 = Path(tmp) / "out_rep"
+    rc2 = ["--cases", str(ff), "--out", str(out2), "--config-dir", str(Path(tmp) / "cfg"), "--workdir", tmp]
+    p = subprocess.run([sys.executable, SCRIPT, *rc2, "--only", "F1", "--repeat", "2"],
+                       capture_output=True, text=True, env=senv, cwd=tmp)
+    s2 = json.loads((out2 / "summary.json").read_text(encoding="utf-8"))
+    check("--repeat 2: 일관되면 통과·회차별 파일 저장",
+          p.returncode == 0 and s2[0]["runs"] == 2 and s2[0]["passed_runs"] == 2 and not s2[0]["flaky"]
+          and (out2 / "F1_1.txt").exists() and (out2 / "F1_2.txt").exists(), p.stdout + p.stderr)
+
+    flip_dir = Path(tmp) / "flipbin"; flip_dir.mkdir()
+    state = Path(tmp) / "flip.state"
+    flip = flip_dir / "claude"
+    flip.write_text(f"""#!{sys.executable}
+import json, sys
+st = {str(state)!r}
+try: n = int(open(st).read())
+except OSError: n = 0
+open(st, "w").write(str(n + 1))
+tier = "D3" if n == 0 else "D2"
+print(json.dumps({{"type": "assistant", "message": {{"content": [
+    {{"type": "tool_use", "name": "Skill", "input": {{"skill": "effort-router"}}}}]}}}}))
+print(json.dumps({{"type": "result", "result": "```text\\n- 판정 티어: " + tier + "\\n- 절약 모드: OFF\\n```"}}))
+""", encoding="utf-8")
+    flip.chmod(0o755)
+    out3 = Path(tmp) / "out_flip"
+    p = subprocess.run([sys.executable, SCRIPT, "--cases", str(ff), "--out", str(out3), "--only", "F1",
+                        "--repeat", "2", "--jobs", "1", "--config-dir", str(Path(tmp) / "cfg"), "--workdir", tmp],
+                       capture_output=True, text=True, env=dict(env, PATH=str(flip_dir)), cwd=tmp)
+    s3 = json.loads((out3 / "summary.json").read_text(encoding="utf-8"))
+    check("--repeat 2: 판정이 갈리면 실패·흔들림 표시",
+          p.returncode == 1 and s3[0]["flaky"] and s3[0]["tiers"] == ["D3", "D2"] and not s3[0]["ok"]
+          and "흔들림" in p.stdout, p.stdout + p.stderr)
+
+    empty = Path(tmp) / "emptybin"; empty.mkdir()
+    out4 = Path(tmp) / "out_missing"
+    p = subprocess.run([sys.executable, SCRIPT, "--cases", str(ff), "--out", str(out4), "--only", "F1",
+                        "--config-dir", str(Path(tmp) / "cfg"), "--workdir", tmp],
+                       capture_output=True, text=True,
+                       env=dict(env, PATH=str(empty), TIER_EVAL_RETRY_WAIT="0"), cwd=tmp)
+    s4 = json.loads((out4 / "summary.json").read_text(encoding="utf-8"))
+    check("실행 파일이 없으면 1회 재시도 후 실패 처리(무한 반복 없음)",
+          p.returncode == 1 and not s4[0]["ok"] and "FileNotFoundError" in s4[0]["reason"], p.stdout + p.stderr)
+
 print(f"\n{sum(results)}/{len(results)} 통과")
 sys.exit(0 if all(results) else 1)

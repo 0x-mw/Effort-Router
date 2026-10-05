@@ -20,8 +20,9 @@ Decision(티어 판정) → Requirement → Acceptance → Task → Evidence →
 | `AGENTS.md` | 저장소 작업의 모델·에포트 정책과 역할 템플릿 오류 예방 규칙 |
 | `agents/` | Claude Code 역할 정의 10종 + ChatGPT 데스크톱 UI 메타데이터 `openai.yaml` |
 | `platforms/` | Codex·ChatGPT 실행 어댑터와 기타 하니스 파생 문서 |
-| `scripts/` | 설치 검증·Codex 요금제 라우팅, 선택적 검증 핀(`verify_pin.py`·`verify_exec.py`), 외부 모델 전송 게이트(`ext_dispatch.py`, 허용 목록 `ext_allowlist.json`), 티어 판정 회귀 시험(`tier_eval.py`, 실행 시 Claude 한도 사용 — `--dry-run`은 사용 안 함) 및 회귀 테스트. 허용 폴더는 커밋하지 않는 로컬 파일 `ext_allowlist.local.json`(견본 `ext_allowlist.local.example.json`)에만 둔다 |
+| `scripts/` | 설치 검증·Codex 요금제 라우팅, 선택적 검증 핀(`verify_pin.py`·`verify_exec.py`), 외부 모델 전송 게이트(`ext_dispatch.py`, 허용 목록 `ext_allowlist.json`), 티어 판정 회귀 시험(`tier_eval.py`, 실행 시 Claude 한도 사용 — `--dry-run`은 사용 안 함) 및 회귀 테스트. 허용 폴더는 커밋하지 않는 로컬 파일 `ext_allowlist.local.json`(견본 `ext_allowlist.local.example.json`)에만 둔다, 세션 기록 집계(`usage_report.py`, 한도 미사용), 대응표 점검(`check_tier_table.py`) |
 | `reference/` | KLIC 스킬별 기본 티어·완료 게이트 대응표(`klic_skill_tiers.md`) — §1-B 문서 업무 티어 판정의 참고표 |
+| `UPSTREAM_SYNC.md` | 원본(업스트림) 갱신을 가져와 overlay를 다시 얹는 절차 |
 | `TESTS.md` | 검증 프로토콜·측정 결과·라운드별 개정 이력·재현 절차 |
 
 ## 설치 (Codex + ChatGPT 데스크톱 앱)

@@ -18,6 +18,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -96,7 +97,7 @@ def validate_cases(cases):
     return errors
 
 
-def run_case(case, a):
+def run_case(case, a, retry=True):
     """claude 를 새 프로세스로 한 번 띄우고 (사용 도구, 호출 스킬, 최종 텍스트, 종료코드)를 모은다."""
     cmd = ["claude", "-p", case["request"] + SUFFIX, "--output-format", "stream-json", "--verbose",
            "--tools", "Skill,Read", "--max-turns", "6"]
@@ -108,6 +109,9 @@ def run_case(case, a):
     except subprocess.TimeoutExpired:
         return [], [], "", "TIMEOUT"
     except OSError as e:
+        if retry:  # 자동 업데이트가 실행 파일을 교체하는 동안의 짧은 공백일 수 있다
+            time.sleep(float(os.environ.get("TIER_EVAL_RETRY_WAIT", "20")))
+            return run_case(case, a, retry=False)
         return [], [], "", f"실행 실패({type(e).__name__})"
     tools, skills, final = [], [], ""
     for line in p.stdout.splitlines():
@@ -146,6 +150,7 @@ def main():
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--timeout", type=int, default=280)
     ap.add_argument("--out", type=Path, default=Path.cwd() / "tier_eval_out")
+    ap.add_argument("--repeat", type=int, default=1, help="사례마다 N번 실행해 모두 통과해야 통과(일관성 확인, 한도 N배 사용)")
     ap.add_argument("--dry-run", action="store_true", help="사례 파일 검증과 표 출력만(claude 호출 없음)")
     a = ap.parse_args()
 
@@ -171,30 +176,49 @@ def main():
         print_cases(cases)
         return 0
 
+    if a.repeat < 1:
+        print("--repeat 는 1 이상이어야 함", file=sys.stderr)
+        return 2
     a.out.mkdir(parents=True, exist_ok=True)
+    jobs = [(c, k) for c in cases for k in range(a.repeat)]
     with cf.ThreadPoolExecutor(max_workers=max(1, a.jobs)) as ex:
-        runs = list(ex.map(lambda c: run_case(c, a), cases))
+        runs = list(ex.map(lambda j: run_case(j[0], a), jobs))
 
-    summary = []
-    for case, (tools, skills, final, rc) in zip(cases, runs):
-        (a.out / f"{case['id']}.txt").write_text(final, encoding="utf-8")
+    by_case = {}
+    for (case, k), (tools, skills, final, rc) in zip(jobs, runs):
+        name = case["id"] if a.repeat == 1 else f"{case['id']}_{k + 1}"
+        (a.out / f"{name}.txt").write_text(final, encoding="utf-8")
         r = score(case, final, tools)
         if not isinstance(rc, int):  # 시간 초과·실행 실패
             r.update(ok=False, reason=rc)
-        summary.append({"id": case["id"], "request": case["request"], "skills": skills,
-                        "tools": sorted(set(tools)), "tier": r["tier"],
-                        "expected": case["expected_tiers"], "expect_saving": case["expect_saving"],
-                        "saving": r["saving"], "ok": r["ok"], "reason": r["reason"], "exit": rc})
+        by_case.setdefault(case["id"], []).append((case, skills, tools, r, rc))
+
+    summary = []
+    for cid, items in by_case.items():
+        case = items[0][0]
+        tiers = [it[3]["tier"] for it in items]
+        reasons = [it[3]["reason"] for it in items if it[3]["reason"]]
+        summary.append({"id": cid, "request": case["request"],
+                        "skills": sorted({str(x) for it in items for x in it[1]}),
+                        "tools": sorted({t for it in items for t in it[2]}),
+                        "tiers": tiers, "tier": tiers[0], "expected": case["expected_tiers"],
+                        "expect_saving": case["expect_saving"], "saving": items[0][3]["saving"],
+                        "runs": len(items), "passed_runs": sum(it[3]["ok"] for it in items),
+                        "flaky": len(set(tiers)) > 1,
+                        "ok": all(it[3]["ok"] for it in items),
+                        "reason": "; ".join(sorted(set(reasons))), "exit": [it[4] for it in items]})
     (a.out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1),
                                         encoding="utf-8")
 
-    print(f"{'사례':5} {'호출된 스킬':24} {'판정':6} {'기대':10} {'결과':4} {'절약':5} 사유")
+    print(f"{'사례':5} {'호출된 스킬':24} {'판정(회차별)':14} {'기대':10} {'결과':4} {'절약':5} 사유")
     for s in summary:
-        print(f"{s['id']:5} {','.join(map(str, s['skills'])) or '-':24} {s['tier'] or '-':6} "
+        seen = ",".join(t or "-" for t in s["tiers"])
+        flag = " ⚠흔들림" if s["flaky"] else ""
+        print(f"{s['id']:5} {','.join(s['skills']) or '-':24} {seen:14} "
               f"{'/'.join(s['expected']):10} {'OK' if s['ok'] else 'XX':4} {s['saving'] or '-':5} "
-              f"{s['reason']}")
+              f"{s['reason']}{flag}")
     passed = sum(s["ok"] for s in summary)
-    print(f"\n{passed}/{len(summary)} 통과 — 결과: {a.out}")
+    print(f"\n{passed}/{len(summary)} 통과 (사례당 {a.repeat}회) — 결과: {a.out}")
     return 0 if passed == len(summary) else 1
 
 
