@@ -109,5 +109,51 @@ with tempfile.TemporaryDirectory() as t:
     rc, _ = run(["tiers", "--now", "엉터리"])
     check("--now 형식 오류는 종료코드 2", rc == 2, str(rc))
 
+# ── 스킬 호출 집계(별도 합성 데이터 — 위 수치에 영향 없음) ──────────────────────────────────
+ARGS_SECRET = "스킬인자-비밀내용-24680"
+
+
+def call(mid, ts, skill, tid, tool="Skill"):
+    return {"type": "assistant", "timestamp": ts, "message": {
+        "id": mid, "model": "claude-opus-5-5",
+        "content": [{"type": "tool_use", "id": tid, "name": tool,
+                     "input": {"skill": skill, "args": ARGS_SECRET}}],
+        "usage": {"input_tokens": 1, "output_tokens": 1,
+                  "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}}
+
+
+with tempfile.TemporaryDirectory() as t2:
+    cfg2 = Path(t2) / "cfg2"
+    q = cfg2 / "projects" / "p"
+    write(q / "sA.jsonl", [user("요청 A"), call("a1", "2026-10-06T09:00:00Z", "effort-router", "tu1"),
+                           asst("a2", "2026-10-06T09:01:00Z", "claude-opus-5-5", contract("D3"))])
+    write(q / "sB.jsonl", [user("요청 B"), call("b1", "2026-10-06T09:10:00Z", "effort-router", "tu2"),
+                           asst("b2", "2026-10-06T09:11:00Z", "claude-opus-5-5", "블록 없이 본문에서만 D3입니다")])
+    write(q / "sC.jsonl", [user("요청 C"), call("c1", "2026-10-06T09:20:00Z", "klic-effort-router", "tu3"),
+                           call("c2", "2026-10-06T09:21:00Z", "hwp", "tu4"),
+                           call("c3", "2026-10-06T09:22:00Z", "effort-router", "tu7", tool="Bash")])  # Skill 이 아닌 도구
+    write(q / "sD.jsonl", [call("a1", "2026-10-06T09:00:00Z", "effort-router", "tu1")])  # 이어하기 복제 — 중복
+    write(q / "sE.jsonl", [user("요청 E (시험이므로 판정까지만)"), call("e1", "2026-10-06T09:30:00Z", "effort-router", "tu5")])
+    write(q / "sF.jsonl", [user("요청 F"), call("f1", "2026-09-16T09:00:00Z", "effort-router", "tu6")])  # 20일 전
+
+    rc, o = run(["tiers", "--config-dir", str(cfg2), "--now", NOW, "--days", "7"])
+    check("스킬 호출: effort-router 2건·세션 2개(중복 복제·Bash 호출·시험 세션·20일 전 제외)",
+          rc == 0 and "effort-router" in o and "   2건 (세션 2개" in o, o)
+    check("스킬 호출: 호출은 있는데 판정 블록이 없는 세션 1개(sB)를 알려 줌",
+          "판정 블록이 없는 세션 1개" in o and "과소집계" in o, o)
+    check("스킬 호출: klic-effort-router 1건(별개 이름으로 센다)", "klic-effort-router    " in o and "   1건 (세션 1개" in o, o)
+    check("스킬 호출: 판정 건수와 호출 건수가 따로 보임(판정 1건 < 호출 2건)", "총 1건" in o, o)
+
+    rc, o_h = run(["tiers", "--config-dir", str(cfg2), "--now", NOW, "--skill", "hwp"])
+    check("--skill 로 센 대상을 바꿀 수 있음(hwp 1건)", rc == 0 and "hwp" in o_h and "   1건 (세션 1개" in o_h, o_h)
+    rc, o_t = run(["tiers", "--config-dir", str(cfg2), "--now", NOW, "--include-tests"])
+    check("--include-tests 면 시험 세션의 호출도 셈(effort-router 3건)", "   3건 (세션 3개" in o_t, o_t)
+    rc, o_30 = run(["tiers", "--config-dir", str(cfg2), "--now", NOW, "--days", "30"])
+    check("--days 30 이면 20일 전 호출도 셈(effort-router 3건)", "   3건 (세션 3개" in o_30, o_30)
+    check("스킬 호출 인자(args)의 내용은 출력에 나오지 않음", all(ARGS_SECRET not in x for x in (o, o_h, o_t, o_30)), "")
+
+    rc, o_none = run(["tiers", "--config-dir", str(Path(t2) / "없음"), "--now", NOW])
+    check("기록이 없으면 호출 0건으로 표시(오류 없음)", rc == 0 and "   0건 (세션 0개" in o_none, o_none)
+
 print(f"\n{sum(results)}/{len(results)} 통과")
 sys.exit(0 if all(results) else 1)
