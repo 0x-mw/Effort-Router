@@ -43,9 +43,24 @@ git merge main                          # jev 가 다시 들어왔거나 수정�
 git push origin remove-jev
 
 git switch klic-overlay
-git merge remove-jev
+git merge remove-jev                    # SKILL.md 는 거의 항상 충돌한다 — 아래 "SKILL.md 분할 구조" 순서로 푼다
 git push origin klic-overlay
 ```
+
+### SKILL.md 분할 구조 (klic-overlay 전용)
+
+klic-overlay 의 `SKILL.md` 는 **핵심본**(약 17KB)이고, 업스트림 본문의 긴 절은 `reference/code_tiers.md`·`state_handoff.md`·`harness_install.md` 로 **원문 그대로** 옮겨져 있다. 이 세 파일은 `scripts/split_skill.py` 가 만든 것이라 손으로 고치지 않는다. 그래서 `klic-overlay` 에 `remove-jev` 를 병합할 때는:
+
+```bash
+git checkout --ours SKILL.md                                   # 핵심본은 우리 것을 유지
+git diff <병합 전 remove-jev> remove-jev -- SKILL.md           # 업스트림이 바꾼 문장을 읽는다
+git show remove-jev:SKILL.md | python3 scripts/split_skill.py - --out reference   # 참고 파일 재생성
+git add SKILL.md reference/
+```
+
+- `split_skill.py` 가 "새 절이라 분류할 수 없음"으로 멈추면 업스트림이 `## ` 절을 새로 만든 것이다. 그 절을 참고 파일로 보낼지(`BUCKETS`) 핵심본에 둘지(`KEEP`) 정하고 다시 실행한다.
+- 업스트림이 바꾼 문장이 핵심본에 **요약**으로 들어 있는 부분(When to Use, §1 요약, §2 역할표·단계표, §3 핵심 제약, Output Contract)이면 핵심본도 손으로 맞춘다.
+- 끝나면 `split_skill.py ... --check` 가 "모두 일치"여야 한다.
 
 각 병합이 끝날 때마다 아래 3번의 시험을 돌린다. 충돌이 나면 `git merge --abort`로 되돌릴 수 있다(푸시 전에만).
 
@@ -53,10 +68,8 @@ git push origin klic-overlay
 
 | 파일 | 우리가 바꾼 부분 | 충돌 시 원칙 |
 |---|---|---|
-| `SKILL.md` 머리말 | `description` 전체 | 우리 문구를 유지한다 |
-| `SKILL.md` | `## KLIC 개인 overlay` 절 전체(§1과 §2 사이) | 통째로 우리 것을 유지한다 |
-| `SKILL.md` | §3의 `model override 금지` 항목(절약 모드 예외 한 문장) | 업스트림 문구 + 우리 예외를 합친다 |
-| `SKILL.md` | `Output Contract`의 티어 목록·절약 모드·외부 모델 줄 | 업스트림 항목 + 우리 줄을 합친다 |
+| `SKILL.md` | 파일 전체가 핵심본(분할 구조) | 우리 것을 유지하고 업스트림 변경은 위 "SKILL.md 분할 구조" 순서로 반영한다 |
+| `reference/code_tiers.md`·`state_handoff.md`·`harness_install.md` | `split_skill.py` 생성물 | 손으로 풀지 말고 재생성한다 |
 | `agents/review-pr-high.md`, `review-pr-xhigh.md` | `tools:` 줄에서 `WebFetch`·`WebSearch` 제거 | 우리 쪽 유지 |
 | `scripts/ext_dispatch.py`, `ext_allowlist*.json`, `reference/`, `scripts/tier_eval*`, `usage_report*`, `check_tier_table*` | 우리가 추가한 파일 | 업스트림에 같은 이름이 생기면 중단하고 확인 |
 | `README.md` | `scripts/`·`reference/` 행, 설치 명령, 허용 폴더 안내 | 업스트림 문구 + 우리 항목을 합친다 |
@@ -70,6 +83,8 @@ python3 scripts/test_ext_dispatch.py
 python3 scripts/test_tier_eval.py
 python3 scripts/test_usage_report.py
 python3 scripts/test_check_tier_table.py
+python3 scripts/test_split_skill.py
+git show remove-jev:SKILL.md | python3 scripts/split_skill.py - --out reference --check   # 모두 일치
 python3 scripts/tier_eval.py --dry-run
 python3 scripts/check_tier_table.py
 git grep -niE 'jev|typesafe' -- . ':!books' ':!UPSTREAM_SYNC.md' ':!SKILL.md'   # 결과가 없어야 한다
@@ -84,8 +99,8 @@ python3 scripts/tier_eval.py --workdir <작업 폴더> --out /tmp/eval_after
 ## 5. 설치본에 반영
 
 - 설치본은 계정 사이에 공유될 수 있다(링크 구조). 복사 전에 현재 설치본을 백업한다.
-- `SKILL.md`는 저장소 파일과 설치본이 일부 다르다(설치 환경 메모 등). **통째로 덮어쓰지 말고** `diff`로 확인해 해당 변경만 반영한다.
-- 새 스크립트·`reference/`·`ext_allowlist.json`은 파일 단위로 복사한다.
+- `SKILL.md`(핵심본)는 2026-10-06 분할 때부터 저장소 파일과 설치본이 같다. 복사 전 `diff`로 설치본에만 있는 줄이 없는지 확인하고 덮어쓴다.
+- 새 스크립트·`reference/`·`ext_allowlist.json`은 파일 단위로 복사한다. 설치본에는 시험 스크립트·`TESTS.md`·`books/` 를 두지 않는다.
 - `ext_allowlist.local.json`(허용 폴더)은 설치본에만 있고 저장소에는 없다 — 덮어쓰거나 지우지 않는다.
 
 ## 6. 문제가 생기면

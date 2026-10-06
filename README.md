@@ -16,12 +16,12 @@ Decision(티어 판정) → Requirement → Acceptance → Task → Evidence →
 
 | 경로 | 내용 |
 |------|------|
-| `SKILL.md` | 스킬 본체 — 티어 판정(§1)·라우팅 테이블(§2)·실행 제약(§3)·merge 권한(§4)·상태·인계 계약(§5)·타 하니스 매핑(§6)·Output Contract |
+| `SKILL.md` | 스킬 핵심본 — 코드 티어 요약(§1)·문서 티어 D1~D3(§1-B)·절약 모드·외부 모델 게이트·라우팅(§2)·핵심 제약(§3)·Output Contract. 호출 때마다 문맥에 들어가므로 짧게 유지한다 |
 | `AGENTS.md` | 저장소 작업의 모델·에포트 정책과 역할 템플릿 오류 예방 규칙 |
 | `agents/` | Claude Code 역할 정의 10종 + ChatGPT 데스크톱 UI 메타데이터 `openai.yaml` |
 | `platforms/` | Codex·ChatGPT 실행 어댑터와 기타 하니스 파생 문서 |
 | `scripts/` | 설치 검증·Codex 요금제 라우팅, 선택적 검증 핀(`verify_pin.py`·`verify_exec.py`), 외부 모델 전송 게이트(`ext_dispatch.py`, 허용 목록 `ext_allowlist.json`), 티어 판정 회귀 시험(`tier_eval.py`, 실행 시 Claude 한도 사용 — `--dry-run`은 사용 안 함) 및 회귀 테스트. 허용 폴더는 커밋하지 않는 로컬 파일 `ext_allowlist.local.json`(견본 `ext_allowlist.local.example.json`)에만 둔다, 세션 기록 집계(`usage_report.py`, 한도 미사용), 대응표 점검(`check_tier_table.py`) |
-| `reference/` | KLIC 스킬별 기본 티어·완료 게이트 대응표(`klic_skill_tiers.md`) — §1-B 문서 업무 티어 판정의 참고표 |
+| `reference/` | 필요할 때만 읽는 상세 규칙 — `code_tiers.md`(티어 판정 전문·라우팅·팬아웃·실행 제약·merge 권한·자주 하는 실패), `state_handoff.md`(§5 상태·인계 계약), `harness_install.md`(설치 계약·실패 원장·§6 환경 매핑). 이 셋은 업스트림 본문을 `scripts/split_skill.py`로 **원문 그대로** 옮긴 생성물이다. `klic_skill_tiers.md`는 KLIC 스킬별 기본 티어·완료 게이트 대응표 |
 | `UPSTREAM_SYNC.md` | 원본(업스트림) 갱신을 가져와 overlay를 다시 얹는 절차 |
 | `TESTS.md` | 검증 프로토콜·측정 결과·라운드별 개정 이력·재현 절차 |
 
